@@ -24,6 +24,7 @@ namespace CreditBot
 
         public MainWindow()
         {
+            DataManager.InitializeDatabase();
             _viewModel = new MainViewModel();
             InitializeComponent();
 
@@ -59,11 +60,12 @@ namespace CreditBot
             _viewModel.MatchStarted = false;
             _viewModel.TeamOneName = "";
             _viewModel.TeamTwoName = "";
-
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
+            Visibility = Visibility.Hidden;
+            _viewModel._betWorker.SaveAllUserData();
             _viewModel._betWorker.DisposeThread();
         }
 

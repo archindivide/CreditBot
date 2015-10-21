@@ -144,18 +144,21 @@ namespace CreditBot
 
         internal void DistributeWinnings(string winnerName)
         {
-            
+            _betWorker.DistributeWinnings(winnerName);
         }
 
         internal void OpenBetting()
         {
-            ErrorMessage = "";
+            if(!_betWorker.BettingOpen)
+            {
+                ErrorMessage = "";
 
-            if (string.IsNullOrEmpty(TeamOneName) || string.IsNullOrEmpty(TeamTwoName))
-                ErrorMessage = "Both team names have to be set before opening betting.";
+                if (string.IsNullOrEmpty(TeamOneName) || string.IsNullOrEmpty(TeamTwoName))
+                    ErrorMessage = "Both team names have to be set before opening betting.";
 
-            if(string.IsNullOrEmpty(ErrorMessage))
-                _betWorker.Start(TeamOneName, TeamTwoName);
+                if (string.IsNullOrEmpty(ErrorMessage))
+                    _betWorker.Start(TeamOneName, TeamTwoName);
+            }
         }
 
         internal void CloseBetting()

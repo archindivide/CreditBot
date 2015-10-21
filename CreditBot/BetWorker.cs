@@ -22,6 +22,7 @@ namespace CreditBot
         private string _teamOne = "";
         private string _teamTwo = "";
         private bool _muted = false;
+        private bool _gettingUsers = false;
 
         public BetWorker()
         {
@@ -42,20 +43,6 @@ namespace CreditBot
                 _ircClient.Listen();
             });
             _listenThread.Start();
-
-            //Channel channel = _ircClient.GetChannel(_channel);
-            //foreach (ChannelUser user in channel.Users.Values)
-            //{
-            //    User dbUser = DataManager.GetUser(user.Nick);
-            //    if (dbUser != null)
-            //    {
-            //        _users.Add(dbUser);
-            //    }
-            //    else
-            //    {
-            //        _users.Add(new User(user.Nick, _defaultStartValue));
-            //    }
-            //}
         }
 
         private void _ircClient_OnQuit(object sender, QuitEventArgs e)
@@ -70,18 +57,32 @@ namespace CreditBot
 
         private void UserQuit(string user)
         {
-            var userObj = _users.Where(u => u.UserName == user);
+            var userObj = _users.Where(u => u.UserName == user).FirstOrDefault();
+            if(userObj != null)
+            {
+                _users.Remove(userObj);
+                DataManager.SaveUserData(userObj);
+            }
         }
 
         private void _ircClient_OnJoin(object sender, JoinEventArgs e)
         {
             if(e.Who != _botName)
             {
-                _users.Add(new User(e.Who, _defaultStartValue));
+                User existingUser = GetUser(e.Who);
+                if (existingUser != null)
+                    _users.Add(existingUser);
+                else
+                    _users.Add(new User(e.Who, _defaultStartValue));
             }
-            else
-            {
+        }
 
+        public void SaveAllUserData()
+        {
+            foreach(User u in _users.ToList())
+            {
+                _users.Remove(u);
+                DataManager.SaveUserData(u);
             }
         }
 
@@ -95,10 +96,63 @@ namespace CreditBot
             SendMessage(string.Format("Betting open for: {0} vs {1} !", teamOne, teamTwo));
         }
 
+        internal void DistributeWinnings(string winnerName)
+        {
+            Dictionary<User, int> winners = new Dictionary<User, int>();
+            int winnerNum = _bets.Where(b => b.Team == winnerName).Select(b => b.BetValue).Sum();
+            int loserNum = _bets.Where(b => b.Team != winnerName).Select(b => b.BetValue).Sum();
+
+            if (winnerNum == 0)
+                winnerNum = 1;
+
+            if (loserNum == 0)
+                loserNum = 1;
+
+            double winnerOdds = (double)loserNum / winnerNum;
+
+            foreach (var bet in _bets)
+            {
+                if (bet.Team == winnerName)
+                {
+                    var user = _users.First(u => u.UserName == bet.User.UserName);
+                    user.Value += (int)(bet.BetValue * winnerOdds);
+                    winners.Add(user, (int)(bet.BetValue * winnerOdds));
+                }
+                else
+                {
+                    var user = _users.First(u => u.UserName == bet.User.UserName);
+                    user.Value -= bet.BetValue;
+                }
+            }
+
+            _bets.Clear();
+
+            StringBuilder winnerString = new StringBuilder();
+            winnerString.Append("Top Winners: ");
+            int counter = 1;
+
+            foreach(var winner in winners.OrderByDescending(w => w.Value).Take(5))
+            {
+                winnerString.Append(counter);
+                winnerString.Append(". ");
+                winnerString.Append(winner.Key.UserName);
+                winnerString.Append(" - ");
+                winnerString.Append(winner.Value);
+                winnerString.Append(", ");
+            }
+
+            winnerString.Remove(winnerString.Length - 2, 2);
+
+            SendMessage(winnerString.ToString());
+        }
+
         internal void Muted(bool mute)
         {
-            _muted = true;
-            SendMessage("Bot Muted.", true);
+            _muted = mute;
+            if (_muted)
+                SendMessage("Bot Muted.", true);
+            else
+                SendMessage("Bot Unmuted.");
         }
 
         private void SendMessage(string message, bool ignoreMute = false)
@@ -110,25 +164,32 @@ namespace CreditBot
         internal void Stop()
         {
             BettingOpen = false;
+            SendMessage(string.Format("Betting closed for: {0} vs {1} .", _teamOne, _teamTwo));
+            _teamOne = "";
+            _teamTwo = "";
         }
-
 
         private void _ircClient_OnChannelMessage(object sender, IrcEventArgs e)
         {
             string message = e.Data.Message;
             User user = GetUser(e.Data.Nick);
+            if(user == null)
+            {
+                _users.Add(new User(e.Data.Nick, _defaultStartValue));
+            }
 
             if (message.StartsWith("!bet"))
             {
-                if(!BettingOpen)
+                if (!BettingOpen)
                 {
-                    SendMessage("Betting is currently not open.");
+                    SendMessage("Betting is not open.");
+                    return;
                 }
 
                 string[] split = message.Split(' ');
                 if (split.Count() != 3)
                 {
-                    SendMessage("Invalid Bet. !bet ### teamName");
+                    SendMessage("Invalid Bet. !bet ### <team name>");
                     return;
                 }
 
@@ -137,11 +198,16 @@ namespace CreditBot
 
                 if (!success)
                 {
-                    SendMessage("Invalid Bet. !bet ### teamName");
+                    SendMessage("Invalid Bet. !bet ### <team name>");
                     return;
                 }
 
                 string teamName = split[2];
+                if (teamName != _teamOne && teamName != _teamTwo)
+                {
+                    SendMessage("Invalid Bet. !bet ### <team name>");
+                    return;
+                }
 
                 _bets.Add(new Bet() { User = user, BetValue = value, Team = teamName });
             }

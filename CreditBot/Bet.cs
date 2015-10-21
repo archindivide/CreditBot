@@ -5,7 +5,7 @@ using System.Text;
 
 namespace CreditBot
 {
-    class Bet
+    public class Bet
     {
         public User User {get;set;}
         public int BetValue { get; set; }
