@@ -10,37 +10,25 @@ namespace CreditBot
     {
         public MainViewModel()
         {
-            _betWorker = new BetWorker();
+            _betWorker = new BetWorker(this);
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
         public BetWorker _betWorker;
 
-        private int _betsPlaced;
         public int BetsPlaced
         {
             get
             {
-                return _betsPlaced;
-            }
-            set
-            {
-                _betsPlaced = value;
-                OnPropertyChanged("BetsPlaced");
+                return _betWorker.GetBetCount();
             }
         }
 
-        private int _totalPot;
         public int TotalPot
         {
             get
             {
-                return _totalPot;
-            }
-            set
-            {
-                _totalPot = value;
-                OnPropertyChanged("TotalPot");
+                return _betWorker.GetBetTotal();
             }
         }
 
@@ -133,7 +121,7 @@ namespace CreditBot
             }
         }
 
-        protected void OnPropertyChanged(string name)
+        public void OnPropertyChanged(string name)
         {
             PropertyChangedEventHandler handler = PropertyChanged;
             if (handler != null)

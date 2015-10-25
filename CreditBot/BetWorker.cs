@@ -11,21 +11,23 @@ namespace CreditBot
     public class BetWorker
     {
         IrcClient _ircClient;
-        private string _server = "irc.quakenet.org";
-        private string _botName = "CreditBot";
-        private int _port = 6667;
-        private string _channel = "#dopefish_lives";
+        private string _server = Config.Default.IRCServer;
+        private string _botName = Config.Default.BotName;
+        private int _port = Config.Default.IRCPort;
+        private string _channel = Config.Default.IRCChannel;
         List<Bet> _bets;
         List<User> _users;
         Thread _listenThread;
-        int _defaultStartValue = 100;
+        int _defaultStartValue = Config.Default.DefaultStartValue;
         private string _teamOne = "";
         private string _teamTwo = "";
         private bool _muted = false;
         private bool _gettingUsers = false;
+        private MainViewModel _viewModel;
 
-        public BetWorker()
+        public BetWorker(MainViewModel viewModel)
         {
+            _viewModel = viewModel;
             _bets = new List<Bet>();
             _users = new List<User>();
 
@@ -88,6 +90,16 @@ namespace CreditBot
 
         public bool BettingOpen { get; set; }
 
+        public int GetBetCount()
+        {
+            return _bets.Count;
+        }
+
+        public int GetBetTotal()
+        {
+            return _bets.Select(b => b.BetValue).Sum();
+        }
+
         internal void Start(string teamOne, string teamTwo)
         {
             _teamOne = teamOne;
@@ -115,33 +127,40 @@ namespace CreditBot
                 if (bet.Team == winnerName)
                 {
                     var user = _users.First(u => u.UserName == bet.User.UserName);
-                    user.Value += (int)(bet.BetValue * winnerOdds);
-                    winners.Add(user, (int)(bet.BetValue * winnerOdds));
-                }
-                else
-                {
-                    var user = _users.First(u => u.UserName == bet.User.UserName);
-                    user.Value -= bet.BetValue;
+                    int winnings = bet.BetValue + (int)(bet.BetValue * winnerOdds);
+                    user.Value += winnings;
+                    winners.Add(user, winnings);
                 }
             }
 
             _bets.Clear();
+            _viewModel.OnPropertyChanged("BetsPlaced");
+            _viewModel.OnPropertyChanged("TotalPot");
 
             StringBuilder winnerString = new StringBuilder();
-            winnerString.Append("Top Winners: ");
-            int counter = 1;
-
-            foreach(var winner in winners.OrderByDescending(w => w.Value).Take(5))
+            winnerString.Append(winnerName + " wins! ");
+            if(winners.Any())
             {
-                winnerString.Append(counter);
-                winnerString.Append(". ");
-                winnerString.Append(winner.Key.UserName);
-                winnerString.Append(" - ");
-                winnerString.Append(winner.Value);
-                winnerString.Append(", ");
-            }
+                winnerString.Append("Top Winners: ");
+                int counter = 1;
 
-            winnerString.Remove(winnerString.Length - 2, 2);
+                foreach (var winner in winners.OrderByDescending(w => w.Value).Take(5))
+                {
+                    winnerString.Append(counter);
+                    winnerString.Append(". ");
+                    winnerString.Append(winner.Key.UserName);
+                    winnerString.Append(" - ");
+                    winnerString.Append(winner.Value);
+                    winnerString.Append(", ");
+                }
+
+                winnerString.Remove(winnerString.Length - 2, 2);
+            }
+            else
+            {
+                winnerString.Append("No winning bets placed.");
+            }
+            
 
             SendMessage(winnerString.ToString());
         }
@@ -175,21 +194,22 @@ namespace CreditBot
             User user = GetUser(e.Data.Nick);
             if(user == null)
             {
-                _users.Add(new User(e.Data.Nick, _defaultStartValue));
+                user = new User(e.Data.Nick, _defaultStartValue);
+                _users.Add(user);
             }
 
             if (message.StartsWith("!bet"))
             {
                 if (!BettingOpen)
                 {
-                    SendMessage("Betting is not open.");
+                    SendMessage(user.UserName + ": Betting is not open.");
                     return;
                 }
 
                 string[] split = message.Split(' ');
                 if (split.Count() != 3)
                 {
-                    SendMessage("Invalid Bet. !bet ### <team name>");
+                    SendMessage(user.UserName + ": Invalid Bet. !bet ### <team name>");
                     return;
                 }
 
@@ -198,18 +218,32 @@ namespace CreditBot
 
                 if (!success)
                 {
-                    SendMessage("Invalid Bet. !bet ### <team name>");
+                    SendMessage(user.UserName + ": Invalid Bet. !bet ### <team name>");
+                    return;
+                }
+
+                if(value > user.Value)
+                {
+                    SendMessage(user.UserName + ": Cannot bet more than you have.");
                     return;
                 }
 
                 string teamName = split[2];
                 if (teamName != _teamOne && teamName != _teamTwo)
                 {
-                    SendMessage("Invalid Bet. !bet ### <team name>");
+                    SendMessage(user.UserName + ": Invalid Bet. !bet ### <team name>");
                     return;
                 }
 
                 _bets.Add(new Bet() { User = user, BetValue = value, Team = teamName });
+                user.Value -= value;
+                _viewModel.OnPropertyChanged("BetsPlaced");
+                _viewModel.OnPropertyChanged("TotalPot");
+            }
+
+            if (message.StartsWith("!credits"))
+            {
+                SendMessage(user.UserName + ": " + user.Value + " credits.");
             }
         }
 
