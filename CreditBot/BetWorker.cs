@@ -95,6 +95,32 @@ namespace CreditBot
             return _bets.Count;
         }
 
+        internal string Give(string giveUserName, string giveAmount)
+        {
+            string error = "";
+            User user = GetUser(giveUserName);
+
+            if(user == null)
+            {
+                user = new User(giveUserName, _defaultStartValue);
+                _users.Add(user);
+            }
+
+            int value = 0;
+
+            bool success = int.TryParse(giveAmount, out value);
+
+            if (success)
+            {
+                user.Value += value;
+                SendMessage("Gave " + giveUserName + " " + giveAmount + " credits.");
+            }
+            else
+                error = "Failed to get number value from amount.";
+
+            return error;
+        }
+
         public int GetBetTotal()
         {
             return _bets.Select(b => b.BetValue).Sum();
@@ -254,6 +280,7 @@ namespace CreditBot
             if(user == null)
             {
                 user = DataManager.GetUser(userName);
+                _users.Add(user);
             }
 
             return user;

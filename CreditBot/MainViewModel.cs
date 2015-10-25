@@ -113,6 +113,19 @@ namespace CreditBot
             }
         }
 
+        public string GiveUserName { get; set; }
+        public string GiveAmount { get; set; }
+
+        internal void ExecuteGive()
+        {
+            ErrorMessage = "";
+            if(string.IsNullOrEmpty(GiveUserName) || string.IsNullOrEmpty(GiveAmount))
+                ErrorMessage = "You must define a username and an amount to give credits.";
+
+            if (string.IsNullOrEmpty(ErrorMessage))
+                ErrorMessage = _betWorker.Give(GiveUserName, GiveAmount);
+        }
+
         public bool BotUnmuted
         {
             get

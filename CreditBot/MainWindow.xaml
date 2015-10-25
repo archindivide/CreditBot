@@ -15,6 +15,7 @@
             <RowDefinition Height="Auto"></RowDefinition>
             <RowDefinition Height="Auto"></RowDefinition>
             <RowDefinition Height="Auto"></RowDefinition>
+            <RowDefinition Height="Auto"></RowDefinition>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"></ColumnDefinition>
@@ -51,5 +52,15 @@
 
         <Button x:Name="btnMuteBot" Content="Mute Bot" Grid.Row="5" Grid.Column="0" IsEnabled="{Binding BotUnmuted}" Click="btnMuteBot_Click"></Button>
         <Button x:Name="btnUnmuteBot" Content="Unmute Bot" Grid.Row="5" Grid.Column="2" IsEnabled="{Binding BotMuted}" Click="btnUnmuteBot_Click"></Button>
+
+        <StackPanel Orientation="Horizontal" Grid.Row="6" Grid.Column="0">
+            <Label Content="UserName:" />
+            <TextBox Text="{Binding GiveUserName}" Width="100" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Grid.Row="6" Grid.Column="3">
+            <Label Content="Amount:" />
+            <TextBox Text="{Binding GiveAmount}" Width="100" />
+            <Button Content="Give" Margin="10,0,0,0" Height="22" Click="btnGive_Click"></Button>
+        </StackPanel>
     </Grid>
 </Window>

@@ -78,5 +78,10 @@ namespace CreditBot
         {
             _viewModel.BotMuted = false;
         }
+
+        private void btnGive_Click(object sender, RoutedEventArgs e)
+        {
+            _viewModel.ExecuteGive();
+        }
     }
 }
