@@ -64,7 +64,6 @@ namespace CreditBot
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            Visibility = Visibility.Hidden;
             _viewModel._betWorker.SaveAllUserData();
             _viewModel._betWorker.DisposeThread();
         }
