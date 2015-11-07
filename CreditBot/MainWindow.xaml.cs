@@ -64,7 +64,6 @@ namespace CreditBot
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            this.IsEnabled = false;
             _viewModel._betWorker.SaveAllUserData();
             _viewModel._betWorker.DisposeThread();
         }

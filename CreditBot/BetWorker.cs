@@ -280,7 +280,7 @@ namespace CreditBot
             if(user == null)
             {
                 user = DataManager.GetUser(userName);
-                _users.Add(user);
+                if (user != null) _users.Add(user);
             }
 
             return user;
@@ -288,7 +288,7 @@ namespace CreditBot
 
         public void DisposeThread()
         {
-            _ircClient.Disconnect();
+            //_ircClient.Disconnect();
             _listenThread.Abort();
         }
     }
